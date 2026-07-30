@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Reveal — The Golden Chip Casino</title>
+
+<!--
+  ============================================================
+  SETUP INSTRUCTIONS
+  ============================================================
+
+  This page asks a guest for their name, looks up the guess
+  they already submitted on who_killed_bob.html (matched by
+  name in the same Supabase "guesses" table), tells them what
+  they guessed, and then lets them reveal who the real killer
+  was.
+
+  It uses the SAME Supabase project and table as the other two
+  files — no new table needed.
+
+  STEP 1 — Paste your credentials
+    Replace SUPABASE_URL and SUPABASE_ANON_KEY below with the
+    same values used in who_killed_bob.html and guess_results.html.
+
+  STEP 2 — Set the real killer
+    Find the line that says:
+      const REAL_KILLER = "Mr. Owen";
+    This is already set correctly for this script, but if you
+    ever change who the killer is, update it here too.
+
+  STEP 3 — Host it
+    Upload this file next to the other two in your GitHub repo.
+    Guests can visit it after they've already submitted a guess
+    on who_killed_bob.html, once you're ready for the reveal.
+  ============================================================
+-->
+
+<style>
+  :root {
+    --felt: #12261c;
+    --felt-deep: #0a1712;
+    --gold: #c9a227;
+    --gold-bright: #e6c458;
+    --cream: #efe6d3;
+    --burgundy: #7a1f2b;
+    --ink: #0b0e0c;
+    --green-ok: #6fae7a;
+    --red-no: #c2645f;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background:
+      radial-gradient(ellipse at top, #1a3327 0%, var(--felt) 45%, var(--felt-deep) 100%);
+    font-family: 'Georgia', 'Iowan Old Style', serif;
+    color: var(--cream);
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  .table-felt {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .card-suits {
+    text-align: center;
+    letter-spacing: 0.6em;
+    font-size: 14px;
+    color: var(--gold);
+    opacity: 0.7;
+    margin-bottom: 8px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', 'Georgia', serif;
+    font-size: clamp(30px, 6vw, 44px);
+    text-align: center;
+    margin: 0 0 4px;
+    color: var(--gold-bright);
+    text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  }
+
+  .subtitle {
+    text-align: center;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--cream);
+    opacity: 0.6;
+    margin: 0 0 32px;
+  }
+
+  .panel {
+    background: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.4));
+    border: 1px solid rgba(201,162,39,0.35);
+    border-radius: 18px;
+    padding: 28px 24px 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  label {
+    display: block;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(239,230,211,0.25);
+    background: rgba(11,14,12,0.5);
+    color: var(--cream);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 16px;
+    margin-bottom: 18px;
+    outline: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--gold);
+    background: rgba(11,14,12,0.75);
+  }
+
+  button {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+
+  button:active {
+    transform: translateY(0);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  #findBtn {
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+    color: var(--ink);
+    box-shadow: 0 8px 20px rgba(201,162,39,0.25);
+  }
+
+  #findBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 26px rgba(201,162,39,0.35);
+  }
+
+  #revealBtn {
+    background: linear-gradient(180deg, var(--burgundy), #4a0f16);
+    color: var(--cream);
+    box-shadow: 0 8px 20px rgba(122,31,43,0.35);
+    margin-top: 18px;
+  }
+
+  #revealBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 26px rgba(122,31,43,0.45);
+  }
+
+  .error {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    color: #e8a3a3;
+    margin-top: 10px;
+    min-height: 16px;
+  }
+
+  .guess-box {
+    display: none;
+    text-align: center;
+    padding: 10px 4px 4px;
+  }
+
+  .guess-box.show {
+    display: block;
+  }
+
+  .guess-box .greeting {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cream);
+    opacity: 0.6;
+    margin-bottom: 6px;
+  }
+
+  .guess-box .your-guess {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 26px;
+    color: var(--gold-bright);
+    margin-bottom: 4px;
+  }
+
+  .reveal-box {
+    display: none;
+    text-align: center;
+    padding: 20px 4px 4px;
+    border-top: 1px solid rgba(201,162,39,0.25);
+    margin-top: 22px;
+  }
+
+  .reveal-box.show {
+    display: block;
+    animation: revealIn 0.5s ease;
+  }
+
+  @keyframes revealIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .reveal-box .label {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+
+  .reveal-box .killer-name {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 34px;
+    color: var(--gold-bright);
+    text-shadow: 0 2px 14px rgba(230,196,88,0.35);
+    margin-bottom: 14px;
+  }
+
+  .verdict {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    padding: 10px 16px;
+    border-radius: 10px;
+    display: inline-block;
+  }
+
+  .verdict.correct {
+    color: var(--green-ok);
+    background: rgba(111,174,122,0.12);
+    border: 1px solid rgba(111,174,122,0.4);
+  }
+
+  .verdict.wrong {
+    color: var(--red-no);
+    background: rgba(194,100,95,0.12);
+    border: 1px solid rgba(194,100,95,0.4);
+  }
+
+  .hidden {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="table-felt">
+  <div class="card-suits">♠ ♥ ♦ ♣</div>
+  <h1>The Reveal</h1>
+  <p class="subtitle">The Golden Chip Casino — find out the truth</p>
+
+  <div class="panel">
+
+    <div id="lookupForm">
+      <label for="nameInput">Put in your name</label>
+      <input type="text" id="nameInput" placeholder="Enter the name you used before" autocomplete="off">
+      <button id="findBtn">Find My Guess</button>
+      <div class="error" id="errorMsg"></div>
+    </div>
+
+    <div class="guess-box" id="guessBox">
+      <div class="greeting" id="greetingText"></div>
+      <div class="your-guess" id="yourGuessText"></div>
+      <button id="revealBtn">Reveal the Killer</button>
+    </div>
+
+    <div class="reveal-box" id="revealBox">
+      <div class="label">The killer was</div>
+      <div class="killer-name" id="killerNameText"></div>
+      <div class="verdict" id="verdictText"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // EDIT THESE — same values as the other two files
+  // ============================================================
+  const SUPABASE_URL = "https://ritfptgrnibsvzuuhrwe.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_PTo1DchIjO7VRlyiCh5APw_tVlBYwop";
+
+  // The true killer — change this here if it ever changes
+  const REAL_KILLER = "Mr. Owen";
+  // ============================================================
+
+  const nameInput = document.getElementById("nameInput");
+  const findBtn = document.getElementById("findBtn");
+  const errorMsg = document.getElementById("errorMsg");
+  const lookupForm = document.getElementById("lookupForm");
+  const guessBox = document.getElementById("guessBox");
+  const greetingText = document.getElementById("greetingText");
+  const yourGuessText = document.getElementById("yourGuessText");
+  const revealBtn = document.getElementById("revealBtn");
+  const revealBox = document.getElementById("revealBox");
+  const killerNameText = document.getElementById("killerNameText");
+  const verdictText = document.getElementById("verdictText");
+
+  let currentGuess = null;
+
+  findBtn.addEventListener("click", async function () {
+    errorMsg.textContent = "";
+    const name = nameInput.value.trim();
+
+    if (!name) {
+      errorMsg.textContent = "Enter your name first.";
+      return;
+    }
+
+    findBtn.disabled = true;
+    findBtn.textContent = "Looking...";
+
+    try {
+      const url = `${SUPABASE_URL}/rest/v1/guesses?guesser_name=ilike.${encodeURIComponent(name)}&select=suspect,created_at&order=created_at.desc&limit=1`;
+      const response = await fetch(url, {
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Fetch failed");
+      }
+
+      const rows = await response.json();
+
+      if (rows.length === 0) {
+        errorMsg.textContent = "No guess found under that name. Check the spelling you used before.";
+        findBtn.disabled = false;
+        findBtn.textContent = "Find My Guess";
+        return;
+      }
+
+      currentGuess = rows[0].suspect;
+      greetingText.textContent = `Hi ${name}, you guessed:`;
+      yourGuessText.textContent = currentGuess;
+
+      lookupForm.style.display = "none";
+      guessBox.classList.add("show");
+
+    } catch (err) {
+      errorMsg.textContent = "Something went wrong. Please try again.";
+      findBtn.disabled = false;
+      findBtn.textContent = "Find My Guess";
+    }
+  });
+
+  revealBtn.addEventListener("click", function () {
+    killerNameText.textContent = REAL_KILLER;
+
+    if (currentGuess && currentGuess.trim().toLowerCase() === REAL_KILLER.trim().toLowerCase()) {
+      verdictText.textContent = "You got it right! 🎉";
+      verdictText.className = "verdict correct";
+    } else {
+      verdictText.textContent = "Not this time, detective.";
+      verdictText.className = "verdict wrong";
+    }
+
+    revealBtn.style.display = "none";
+    revealBox.classList.add("show");
+  });
+</script>
+
+</body>
+</html>
